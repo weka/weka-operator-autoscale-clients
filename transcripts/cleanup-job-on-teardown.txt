@@ -14,7 +14,7 @@ wekaclient.weka.weka.io "cluster-dev-clients" deleted
 $ kubectl get wekacontainer -n default | grep client
 cluster-dev-clients-op-preflight-cl-1   Destroying
 $ kubectl get jobs -A | grep -i cleanup
-weka-operator-system  weka-cleanup-container-638c8da9-57b1-4f63-861b-a491e9bd9dda  Running  0/1  5s
+weka-operator-system  weka-cleanup-container-11111111-1111-1111-1111-111111111111  Running  0/1  5s
 
 # The cleanup Job is pinned to the node (operator source cleanup_persistent_dir.go):
 #   spec.template.spec.nodeSelector: { kubernetes.io/hostname: op-preflight-cl-1 }
