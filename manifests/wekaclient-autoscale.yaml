@@ -1,0 +1,51 @@
+# WekaClient scoped to an autoscaling node pool and made evictable.
+#
+# - nodeSelector keeps client pods on the autoscaling pool only.
+# - rawTolerations let the client run on a tainted autoscaling pool AND make the
+#   pool's taint the lever the autoscaler uses to drain it cleanly (v1.10.4).
+# - skipCleanupPersistentDir is NOT set here: in v1.10.4 it is a WekaContainer
+#   override, not a WekaClient one — see manifests/wekacontainer-skipcleanup-patch.yaml.
+#
+# Validated against operator v1.10.4. Replace image/secret/pool-label/taint with
+# your environment's values.
+apiVersion: weka.weka.io/v1alpha1
+kind: WekaClient
+metadata:
+  name: autoscale-clients
+  namespace: default
+  annotations:
+    # --- Fix C1: make the client evictable so the autoscaler can drain the node ---
+    # In v1.10.4 the WekaClient CR has no rawPodAnnotations field; instead the
+    # operator PROPAGATES annotations from this CR onto the client pod (validated
+    # live — the pod ends up with this annotation + weka.io/applied-annotations).
+    # On a newer operator, prefer spec.rawPodAnnotations.
+    cluster-autoscaler.kubernetes.io/safe-to-evict: "true"
+spec:
+  image: quay.io/weka.io/weka-in-container:4.4.10.183
+  imagePullSecret: quay-io-robot-secret
+  driversDistService: "https://weka-drivers-dist.weka-operator-system.svc.cluster.local:60002"
+  portRange:
+    basePort: 46000
+  wekaSecretRef: weka-client-cluster-dev
+  targetCluster:
+    name: cluster-dev
+    namespace: default
+  network:
+    udpMode: true
+
+  # --- Fix A: scope clients to the autoscaling pool ---
+  nodeSelector:
+    weka.io/supports-clients: "true"      # operator's client-scheduling label
+    # Add your pool's label so clients ONLY land on the autoscaling pool, e.g.:
+    # cloud.google.com/gke-nodepool: clients
+    # oci.oraclecloud.com/node-pool: gpu-workers
+
+  # --- Fix C2 (optional): tolerate the autoscaling pool's taint ---
+  # Taint the pool (e.g. `kubectl taint nodes <pool> weka.io/client=:NoSchedule`)
+  # so only WEKA-aware workloads land there and placement is deterministic.
+  # NOTE: a taint alone does NOT make the client evictable — the safe-to-evict
+  # annotation above is what lets the autoscaler drain the node.
+  rawTolerations:
+    - key: weka.io/client
+      operator: Exists
+      effect: NoSchedule

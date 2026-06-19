@@ -1,0 +1,30 @@
+# Retire the cleanup deadlock at the source: skipCleanupPersistentDir on the
+# autoscale client WekaContainer(s).
+#
+# WHY ON THE WEKACONTAINER, NOT THE WEKACLIENT:
+#   In v1.10.4, skipCleanupPersistentDir lives on WekaContainerSpecOverrides.
+#   WekaClientSpecOverrides only exposes skipActiveMountsCheck. So the override
+#   is set on the client WekaContainer objects the operator creates.
+#
+# Apply to existing/stuck client containers (also releases finalizer-deadlocked
+# ones once they re-reconcile):
+#
+#   kubectl -n <ns> patch wekacontainer <name> --type merge \
+#     -p '{"spec":{"overrides":{"skipCleanupPersistentDir":true}}}'
+#
+# Sweep all client-role containers in a namespace:
+#
+#   kubectl -n <ns> get wekacontainers -o json \
+#   | jq -r '.items[] | select(.spec.mode=="client") | .metadata.name' \
+#   | xargs -r -I{} kubectl -n <ns> patch wekacontainer {} --type merge \
+#       -p '{"spec":{"overrides":{"skipCleanupPersistentDir":true}}}'
+#
+# Declarative form of the override block (for reference):
+apiVersion: weka.weka.io/v1alpha1
+kind: WekaContainer
+metadata:
+  name: <client-container-name>
+  namespace: default
+spec:
+  overrides:
+    skipCleanupPersistentDir: true

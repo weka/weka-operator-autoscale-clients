@@ -1,0 +1,34 @@
+# Captured 2026-06-18, operator v1.10.4.
+# Cleanup mechanism on client teardown, and the cordon-vs-NotReady nuance.
+
+# Setup: remove the skip override, cordon the client node, delete the WekaClient
+# to trigger teardown of its node-pinned client WekaContainer.
+$ kubectl patch wekacontainer cluster-dev-clients-op-preflight-cl-1 -n default \
+    --type merge -p '{"spec":{"overrides":{"skipCleanupPersistentDir":false}}}'
+$ kubectl cordon op-preflight-cl-1
+node/op-preflight-cl-1 cordoned
+$ kubectl delete wekaclient cluster-dev-clients -n default --wait=false
+wekaclient.weka.weka.io "cluster-dev-clients" deleted
+
+# t+18s: container is Destroying, and the operator created a node-pinned cleanup Job:
+$ kubectl get wekacontainer -n default | grep client
+cluster-dev-clients-op-preflight-cl-1   Destroying
+$ kubectl get jobs -A | grep -i cleanup
+weka-operator-system  weka-cleanup-container-638c8da9-57b1-4f63-861b-a491e9bd9dda  Running  0/1  5s
+
+# The cleanup Job is pinned to the node (operator source cleanup_persistent_dir.go):
+#   spec.template.spec.nodeSelector: { kubernetes.io/hostname: op-preflight-cl-1 }
+
+# t+36s onward: on this still-Ready (cordoned) node the Job SCHEDULED and COMPLETED;
+# the container finalized and disappeared. => cordon alone does NOT deadlock.
+$ kubectl get wekacontainer -n default | grep client
+(client wekacontainer gone)
+
+# CONCLUSION: the deadlock occurs only when the node is NotReady/removed (the real
+# scale-out case) — the pinned Job then cannot run and the finalizer never clears.
+# Fixes: skipCleanupPersistentDir=true (no Job created at all) and/or reap the
+# orphaned Node object (kubectl delete node) so the operator self-skips cleanup.
+
+# Lab restored afterwards:
+$ kubectl uncordon op-preflight-cl-1 && kubectl apply -f yaml/client.yaml
+# -> WekaClient/WekaContainer Running again, node Ready.

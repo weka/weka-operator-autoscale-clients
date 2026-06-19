@@ -1,0 +1,31 @@
+# Pin the driver-distribution (`dist`) role to the stable, non-autoscaling pool.
+#
+# In v1.10.4 `dist` placement is controlled by the WekaPolicy driver-dist
+# payload's `distNodeSelector` — NOT the WekaClient. The operator typically
+# already manages a driver-dist WekaPolicy, so the usual workflow is to PATCH the
+# existing one rather than create a second:
+#
+#   kubectl get wekapolicy -A
+#   kubectl -n <ns> patch wekapolicy <name> --type merge -p \
+#     '{"spec":{"payload":{"driverDistPayload":{"distNodeSelector":{"weka.io/role":"backend"}}}}}'
+#
+# The label `weka.io/role: backend` must be present ONLY on the fixed
+# backend/stable nodes (which are excluded from the autoscaler). With dist pinned
+# there, the autoscaler can drain client nodes without a dist pod blocking it.
+#
+# Full-object form (for reference / GitOps). Confirm `spec.type` and surrounding
+# fields against your live policy: `kubectl get wekapolicy <name> -o yaml`.
+apiVersion: weka.weka.io/v1alpha1
+kind: WekaPolicy
+metadata:
+  name: drivers-dist
+  namespace: weka-operator-system
+spec:
+  type: DriverDist
+  payload:
+    driverDistPayload:
+      # dist (and driver builds) restricted to the stable backend pool:
+      distNodeSelector:
+        weka.io/role: backend
+      nodeSelectors:
+        - weka.io/role: backend

@@ -1,0 +1,26 @@
+# Captured 2026-06-18 on op-preflight-cl-0 (control plane). Operator v1.10.4.
+
+$ kubectl get wekacluster -A
+NAME          STATUS   CLUSTER ID                             CCT(A/C/D)  DCT(A/C/D)  DRVS(A/C/D)
+cluster-dev   Ready    22e76ac5-0358-428c-b2ed-c9f91a8276de   6/6/6       6/6/6       6/6/6
+
+# weka status (run inside a compute pod) — independent confirmation:
+#   status: OK (12 backend containers UP, 6 drives UP)
+#   protection: 3+2  Fully protected
+#   io status: STARTED (12 io-nodes UP, 42 Buckets UP)
+#   1.18 TiB total
+
+$ kubectl get nodes -o wide
+NAME                STATUS   ROLES           VERSION
+op-preflight-cl-0   Ready    control-plane   v1.32.13   10.132.0.37
+op-preflight-cl-1   Ready    <none>          v1.32.13   10.132.0.47   # client worker
+op-preflight-be-0   Ready    <none>          v1.32.13   10.132.0.48   # backends
+op-preflight-be-1   Ready    <none>          v1.32.13   10.132.0.38
+op-preflight-be-2   Ready    <none>          v1.32.13   10.132.0.41
+op-preflight-be-3   Ready    <none>          v1.32.13   10.132.0.49
+op-preflight-be-4   Ready    <none>          v1.32.13   10.132.0.44
+op-preflight-be-5   Ready    <none>          v1.32.13   10.132.0.35
+
+$ kubectl get wekaclient,wekacontainer -n default | grep -i client
+wekaclient.weka.weka.io/cluster-dev-clients   Running   cluster-dev   1/1/1
+wekacontainer.weka.weka.io/cluster-dev-clients-op-preflight-cl-1   Running   client   10.132.0.47   op-preflight-cl-1

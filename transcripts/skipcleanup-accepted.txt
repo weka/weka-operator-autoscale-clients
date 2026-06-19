@@ -1,0 +1,11 @@
+# Captured 2026-06-18, operator v1.10.4.
+# Cleanup fix: skipCleanupPersistentDir is accepted/stored on the client WekaContainer.
+# (Field lives on WekaContainerSpecOverrides, NOT WekaClientSpecOverrides in v1.10.4.)
+
+$ kubectl patch wekacontainer cluster-dev-clients-op-preflight-cl-1 -n default \
+    --type merge -p '{"spec":{"overrides":{"skipCleanupPersistentDir":true}}}'
+wekacontainer.weka.weka.io/cluster-dev-clients-op-preflight-cl-1 patched
+
+$ kubectl get wekacontainer cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{.spec.overrides}'
+{"skipCleanupPersistentDir":true}

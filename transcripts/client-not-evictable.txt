@@ -1,0 +1,25 @@
+# Captured 2026-06-18. Default WekaClient pod on op-preflight-cl-1, operator v1.10.4.
+# Problem 1: the client is non-evictable, so cluster-autoscaler won't drain the node.
+
+$ kubectl get pod cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{.spec.priorityClassName}'
+weka-targeted-no-evict
+
+# tolerations (abridged) — tolerates unschedulable/not-ready/unreachable, etc:
+$ kubectl get pod cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{range .spec.tolerations[*]}{.key}{":"}{.effect}{"  "}{end}'
+weka.io/shutdown-node:NoExecute  node.kubernetes.io/not-ready:NoExecute
+node.kubernetes.io/unreachable:NoExecute  node.kubernetes.io/network-unavailable:NoExecute
+node.kubernetes.io/unschedulable:NoExecute  node.kubernetes.io/disk-pressure:NoSchedule
+node.kubernetes.io/cpu-pressure:NoSchedule  node.kubernetes.io/memory-pressure:NoSchedule  ...
+
+# annotations — NO cluster-autoscaler.kubernetes.io/safe-to-evict present:
+$ kubectl get pod cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{.metadata.annotations}'
+{"kubectl.kubernetes.io/last-applied-configuration":"...",
+ "weka.io/applied-annotations":"kubectl.kubernetes.io/last-applied-configuration"}
+
+# client WekaContainer is node-pinned with empty overrides (exposed to Problem 2):
+$ kubectl get wekacontainer cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{.spec.mode}  nodeAffinity={.spec.nodeAffinity}  overrides={.spec.overrides}'
+client  nodeAffinity=op-preflight-cl-1  overrides={}

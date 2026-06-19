@@ -1,0 +1,17 @@
+# Captured 2026-06-18, operator v1.10.4.
+# Placement fix: annotate the WekaClient CR -> operator propagates it to the pod.
+# (v1.10.4 has no WekaClient.spec.rawPodAnnotations; CR-metadata annotation is the path.)
+
+$ kubectl annotate wekaclient cluster-dev-clients \
+    cluster-autoscaler.kubernetes.io/safe-to-evict=true --overwrite
+wekaclient.weka.weka.io/cluster-dev-clients annotated
+
+# ~25s later, the client POD has the annotation, and the operator recorded that
+# it applied it via weka.io/applied-annotations:
+$ kubectl get pod cluster-dev-clients-op-preflight-cl-1 -n default \
+    -o jsonpath='{.metadata.annotations}' | tr ',' '\n' | grep -iE 'safe-to-evict|applied-annotations'
+"cluster-autoscaler.kubernetes.io/safe-to-evict":"true"
+"weka.io/applied-annotations":"kubectl.kubernetes.io/last-applied-configuration
+cluster-autoscaler.kubernetes.io/safe-to-evict"
+
+# => The pod is now safe-to-evict; cluster-autoscaler can drain the node.

@@ -1,0 +1,10 @@
+# local / transient
+*.log
+*.tmp
+.DS_Store
+kubeconfig
+*.kubeconfig
+.claude/
+# secrets must never be committed (client secrets, pull secrets, etc.)
+*secret*.yaml
+!manifests/*skipcleanup*.yaml
