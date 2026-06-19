@@ -68,7 +68,7 @@ which is exactly what you want for a node that is being destroyed anyway.
 > v1.10.4 only exposes `skipActiveMountsCheck`). So it is applied to the client
 > `WekaContainer`(s), not the parent `WekaClient`. See
 > `manifests/wekacontainer-skipcleanup-patch.yaml` for the exact patch and
-> `scripts/04-apply-skipcleanup.sh`.
+> `scripts/03-fix-cleanup.sh`.
 
 ## Fix 2 (root cause): reap orphaned Node objects on scale-in
 
